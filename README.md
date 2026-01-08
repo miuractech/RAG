@@ -7,10 +7,11 @@ Create a production-ready MVP for securely chatting with your documents.
 
 ## ☑️ Features
 
-- **Interactive Chat Interface:** Interact with your documentation, leveraging the capabilities of OpenAI’s GPT models and retrieval augmented generation (RAG).
+- **Interactive Chat Interface:** Interact with your documentation, leveraging the capabilities of OpenAI's GPT models and retrieval augmented generation (RAG).
+- **Multi-Format Support:** Upload and process both **Markdown (.md)** and **PDF (.pdf)** files with automatic text extraction and chunking. [See PDF support docs →](./PDF_SUPPORT_README.md)
 - **Login With <3rd Party>:** Integrate one-click 3rd party login with any of our 18 auth providers and user/password.
 - **Document Storage:** Securely upload, store, and retrieve user uploaded documents.
-- **REST API:** Expose a flexible REST API that we’ll consume to build the interactive front-end.
+- **REST API:** Expose a flexible REST API that we'll consume to build the interactive front-end.
 - **Row-level Security:** Secure all of your user data user data with production-ready row-level security.
 
 ## 📄 Workshop Instructions
@@ -59,6 +60,8 @@ This repository includes 3 sample markdown files that we'll use to test the app:
 [`./sample-files/roman-empire-2.md`](./sample-files/roman-empire-2.md)
 
 [`./sample-files/roman-empire-3.md`](./sample-files/roman-empire-3.md)
+
+> **New!** The app now also supports **PDF files**. Upload any PDF document and the system will automatically extract text, chunk it, and generate embeddings for RAG. See [PDF_SUPPORT_README.md](./PDF_SUPPORT_README.md) for details.
 
 ## 🪜 Step-by-step
 
@@ -1512,7 +1515,9 @@ Up until now we've been developing the app locally. Use these instructions to de
 Feel free to extend this app in any way you like. Here are some ideas for next steps:
 
 - Record message history in the database (and generate embeddings on them for RAG memory)
-- Support more file formats than just markdown
+- ~~Support more file formats than just markdown~~ ✅ **Done!** PDF support is now available
+- Add OCR support for scanned PDFs (Tesseract.js)
+- Support DOCX/DOC files
 - Pull in documents from the Notion API
 - Restrict chat to user-selected documents
 - Perform RAG on images using CLIP embeddings
