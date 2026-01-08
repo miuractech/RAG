@@ -4,9 +4,9 @@ const nextConfig = {
     ignoreBuildErrors: true,
     tsconfigPath: 'tsconfig.json',
   },
-  experimental: {
-    serverActions: true,
-  },
+  // Server actions are stable in Next.js 16, no need for experimental flag
+  // Add empty turbopack config to work with existing webpack config
+  turbopack: {},
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
