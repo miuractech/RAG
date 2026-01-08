@@ -1,0 +1,44 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/node-ensure@^0.0.0?target=denonext": "https://esm.sh/node-ensure@0.0.0?target=denonext"
+  },
+  "remote": {
+    "https://esm.sh/node-ensure@0.0.0/denonext/node-ensure.mjs": "3b250ed10dec513f66ed304f86902a9f18a6d1b446ea2f35de4a4f38d45aa1e5",
+    "https://esm.sh/node-ensure@0.0.0?target=denonext": "7ebc76a7e84448f058446894ea89e4a2247a2679bdd9b3f21d3cb788165dab6e",
+    "https://esm.sh/pdf-parse@1.1.1": "acaefb1b2bfc5e65084ab4a2aa051856bbd064f761c5f04727ea1cfea7abd29f",
+    "https://esm.sh/pdf-parse@1.1.1/denonext/pdf-parse.mjs": "597457b5708d8b7ff826e667fc509177026566567faa1d1631919a4923ef888f",
+    "https://esm.sh/unpdf@0.11.0": "6ccb2e37cf9cd5006b50f8f7da13e0569b12199918f83b2a6717fd552b3a35b9"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@radix-ui/react-slot@^1.0.2",
+        "npm:@radix-ui/react-toast@^1.1.5",
+        "npm:@supabase/auth-helpers-nextjs@latest",
+        "npm:@supabase/ssr@0.8",
+        "npm:@supabase/supabase-js@latest",
+        "npm:@tanstack/react-query@^4.35.7",
+        "npm:@types/node@20.3.1",
+        "npm:@types/react-dom@18.2.5",
+        "npm:@types/react@18.2.12",
+        "npm:ai@^6.0.22",
+        "npm:autoprefixer@10.4.15",
+        "npm:class-variance-authority@0.7",
+        "npm:clsx@2",
+        "npm:encoding@~0.1.13",
+        "npm:lucide-react@0.284",
+        "npm:next@latest",
+        "npm:postcss@8.4.29",
+        "npm:react-dom@18.2.0",
+        "npm:react@18.2.0",
+        "npm:supabase@^1.102.0",
+        "npm:tailwind-merge@^1.14.0",
+        "npm:tailwindcss-animate@^1.0.7",
+        "npm:tailwindcss@3.3.3",
+        "npm:three-dots@~0.3.2",
+        "npm:typescript@5.1.3"
+      ]
+    }
+  }
+}

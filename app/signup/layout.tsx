@@ -1,8 +1,9 @@
-import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
-import FilesClient from './FilesClient';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { PropsWithChildren } from 'react';
 
-export default async function FilesPage() {
+export default async function SignupLayout({ children }: PropsWithChildren) {
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,9 +22,14 @@ export default async function FilesPage() {
     }
   );
 
-  const { data: documents } = await supabase
-    .from('documents_with_storage_path')
-    .select();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  return <FilesClient initialDocuments={documents || []} />;
+  if (user) {
+    return redirect('/');
+  }
+
+  return <>{children}</>;
 }
+
