@@ -3,6 +3,7 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown';
 import { toString } from 'mdast-util-to-string';
 import { u } from 'unist-builder';
+import { sanitizeText } from './text-sanitizer.ts';
 
 export type Json = Record<
   string,
@@ -55,7 +56,15 @@ export function processMarkdown(
   content: string,
   maxSectionLength = 2500
 ): ProcessedMd {
-  const mdTree = fromMarkdown(content);
+  // Sanitize input content first
+  const sanitizedContent = sanitizeText(content);
+  
+  if (!sanitizedContent) {
+    console.warn('Markdown content became empty after sanitization');
+    return { sections: [] };
+  }
+  
+  const mdTree = fromMarkdown(sanitizedContent);
 
   if (!mdTree) {
     return {
@@ -67,7 +76,14 @@ export function processMarkdown(
 
   const sections = sectionTrees.flatMap<Section>((tree) => {
     const [firstNode] = tree.children;
-    const content = toMarkdown(tree);
+    const rawContent = toMarkdown(tree);
+    
+    // Sanitize the section content
+    const content = sanitizeText(rawContent);
+    
+    if (!content) {
+      return []; // Skip empty sections after sanitization
+    }
 
     const heading =
       firstNode.type === 'heading' ? toString(firstNode) : undefined;

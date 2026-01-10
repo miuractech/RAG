@@ -12,6 +12,7 @@ import {
   type SearchResult,
   type AgenticResult
 } from './query-agent.ts';
+import { sanitizeText } from './text-sanitizer.ts';
 
 export interface AgenticSearchConfig {
   maxIterations?: number;          // Maximum query attempts (default: 3)
@@ -94,8 +95,16 @@ export async function performAgenticSearch(
       try {
         console.log(`[AgenticSearch] Trying: ${variation.strategy} - "${variation.query}"`);
 
+        // Sanitize the query to prevent ByteString errors
+        const sanitizedQuery = sanitizeText(variation.query);
+        
+        if (!sanitizedQuery) {
+          console.warn(`[AgenticSearch] Skipping empty query after sanitization: ${variation.strategy}`);
+          continue;
+        }
+
         // Generate embedding for this query
-        const embeddingOutput = await model.run(variation.query, {
+        const embeddingOutput = await model.run(sanitizedQuery, {
           mean_pool: true,
           normalize: true,
         });

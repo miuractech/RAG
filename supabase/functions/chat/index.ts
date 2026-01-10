@@ -9,6 +9,7 @@ import { createClient } from '@supabase/supabase-js';
 import { OpenAIStream, StreamingTextResponse } from 'ai';
 import OpenAI from 'openai';
 import { performAgenticSearch, generateAgenticSystemPrompt } from '../_lib/agentic-search.ts';
+import { sanitizeText } from '../_lib/text-sanitizer.ts';
 
 const openai = new OpenAI({
   apiKey: Deno.env.get('OPENAI_API_KEY'),
@@ -73,9 +74,10 @@ Deno.serve(async (req) => {
 
     let content: string;
     let agenticResult: Awaited<ReturnType<typeof performAgenticSearch>> | undefined;
+    let usedAgenticSearch = useAgenticSearch; // Track if we actually used agentic search
 
     // Use agentic search with query reconstruction and chaining
-    if (useAgenticSearch) {
+    if (usedAgenticSearch) {
       console.log('[Chat] Using Agentic Search mode');
       
       try {
@@ -109,16 +111,31 @@ Deno.serve(async (req) => {
       } catch (agenticError) {
         console.error('[Chat] Agentic search failed, falling back to simple search:', agenticError);
         // Fall back to simple search
-        useAgenticSearch = false; // Mark as fallback for response headers
+        usedAgenticSearch = false; // Mark as fallback for response headers
       }
     }
     
     // Simple search (either by choice or as fallback)
-    if (!useAgenticSearch || !content) {
+    if (!usedAgenticSearch || !content) {
       // Fallback to original simple search
       console.log('[Chat] Using Simple Search mode');
       
-      const embeddingOutput = await model.run(message, {
+      // Sanitize the message to prevent ByteString errors
+      const sanitizedMessage = sanitizeText(message);
+      
+      if (!sanitizedMessage) {
+        return new Response(
+          JSON.stringify({
+            error: 'Invalid message content. Please try rephrasing your question.',
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      
+      const embeddingOutput = await model.run(sanitizedMessage, {
         mean_pool: true,
         normalize: true,
       });
@@ -191,8 +208,8 @@ ${injectedDocs}`;
     const stream = OpenAIStream(completionStream);
     
     // Add search metadata to response headers if using agentic search
-    const responseHeaders = { ...corsHeaders };
-    if (useAgenticSearch && typeof agenticResult !== 'undefined') {
+    const responseHeaders: Record<string, string> = { ...corsHeaders };
+    if (usedAgenticSearch && typeof agenticResult !== 'undefined') {
       responseHeaders['X-Search-Metadata'] = JSON.stringify({
         iterations: agenticResult.iterations,
         totalQueries: agenticResult.totalQueries,

@@ -1,4 +1,5 @@
 import { extractText } from 'unpdf';
+import { sanitizeText } from './text-sanitizer.ts';
 
 export type Section = {
   content: string;
@@ -38,8 +39,16 @@ export async function processPdf(
       return { sections: [] };
     }
     
+    // Sanitize the extracted text to remove invalid characters
+    const sanitizedText = sanitizeText(text);
+    
+    if (!sanitizedText || sanitizedText.trim().length === 0) {
+      console.warn('PDF text became empty after sanitization - may contain invalid encoding');
+      return { sections: [] };
+    }
+    
     const sections: Section[] = [];
-    const fullText = text.trim();
+    const fullText = sanitizedText.trim();
     
     // Chunk the entire text
     if (fullText.length > maxSectionLength) {
@@ -93,8 +102,11 @@ export async function processPdfWithFormatting(
     const result = await extractText(uint8Array, { mergePages: false });
     const pages = Array.isArray(result.text) ? result.text : [result.text];
     
+    // Sanitize each page and combine
+    const sanitizedPages = pages.map(page => sanitizeText(page)).filter(page => page && page.trim());
+    
     // Combine all pages into one text
-    const fullText = pages.join('\n\n').trim();
+    const fullText = sanitizedPages.join('\n\n').trim();
     
     if (!fullText || fullText.length === 0) {
       return { sections: [] };

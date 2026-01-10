@@ -5,6 +5,7 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from '@supabase/supabase-js';
+import { sanitizeText } from '../_lib/text-sanitizer.ts';
 
 console.log("Hello from Functions!")
 
@@ -94,9 +95,18 @@ Deno.serve(async (req: Request) => {
       continue;
     }
 
+    // Sanitize content to prevent ByteString errors
+    const sanitizedContent = sanitizeText(content);
+    
+    if (!sanitizedContent) {
+      console.error(`Content became empty after sanitization for id ${id}`);
+      processedCount++;
+      continue;
+    }
+
     try {
       // Generate embedding using Supabase AI
-      const output = await model.run(content, {
+      const output = await model.run(sanitizedContent, {
         mean_pool: true,
         normalize: true,
       });
