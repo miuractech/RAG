@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       },
     });
 
-    const { message, messages, useAgenticSearch = true } = await req.json();
+    const { message, messages, useAgenticSearch = true, fileIds = null } = await req.json();
 
     let content: string;
     let agenticResult: Awaited<ReturnType<typeof performAgenticSearch>> | undefined;
@@ -92,7 +92,8 @@ Deno.serve(async (req) => {
             resultsPerQuery: 4,          // Get 4 docs per query
             enableChaining: true,        // Enable contextual query chaining
             maxQueriesPerIteration: 3,   // Max 3 queries per iteration
-            timeoutMs: 25000             // 25 second timeout for safety
+            timeoutMs: 25000,            // 25 second timeout for safety
+            fileIds: fileIds             // Filter by specific file IDs
           }
         );
 
@@ -128,6 +129,7 @@ Deno.serve(async (req) => {
         .rpc('match_document_sections', {
           embedding,
           match_threshold: 0.8,
+          file_ids: fileIds,
         })
         .select('content')
         .limit(5);

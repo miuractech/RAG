@@ -24,9 +24,14 @@ export default async function RootLayout({ children }: PropsWithChildren) {
           return cookieStore.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Cookie modifications are not allowed in layouts/pages
+            // This is expected and handled by Next.js route handlers
+          }
         },
       },
     }
@@ -37,8 +42,8 @@ export default async function RootLayout({ children }: PropsWithChildren) {
   } = await supabase.auth.getUser();
 
   return (
-    <html lang="en" className="h-full">
-      <body className="h-full">
+    <html lang="en" className="h-full" suppressHydrationWarning>
+      <body className="h-full" suppressHydrationWarning>
         <Providers>
           <div className="flex flex-col items-center h-full">
             <nav className="w-full flex justify-center border-b border-b-foreground/10">

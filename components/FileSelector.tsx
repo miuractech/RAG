@@ -1,0 +1,227 @@
+'use client';
+
+import { createBrowserClient } from '@supabase/ssr';
+import { useEffect, useState } from 'react';
+import { toast } from '@/components/ui/use-toast';
+import { Input } from '@/components/ui/input';
+import { X, Search, FileText, File } from 'lucide-react';
+
+interface Document {
+  id: number;
+  name: string;
+  storage_object_path: string;
+  created_at: string;
+}
+
+interface FileSelectorProps {
+  selectedFileIds: number[];
+  onSelectionChange: (fileIds: number[]) => void;
+  maxSelection?: number;
+}
+
+export default function FileSelector({ 
+  selectedFileIds, 
+  onSelectionChange, 
+  maxSelection = 10 
+}: FileSelectorProps) {
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  const loadDocuments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('documents_with_storage_path')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setDocuments(data || []);
+    } catch (error) {
+      console.error('Error loading documents:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load documents',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleFile = (fileId: number) => {
+    if (selectedFileIds.includes(fileId)) {
+      onSelectionChange(selectedFileIds.filter(id => id !== fileId));
+    } else {
+      if (selectedFileIds.length >= maxSelection) {
+        toast({
+          title: 'Selection Limit',
+          description: `You can only select up to ${maxSelection} files`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      onSelectionChange([...selectedFileIds, fileId]);
+    }
+  };
+
+  const clearSelection = () => {
+    onSelectionChange([]);
+  };
+
+  const filteredDocuments = documents.filter(doc =>
+    doc.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const isPdf = (filename: string) => filename.toLowerCase().endsWith('.pdf');
+
+  return (
+    <div className="w-80 border-l bg-gray-50 flex flex-col h-full">
+      {/* Header */}
+      <div className="p-4 border-b bg-white">
+        <h2 className="text-lg font-semibold mb-2">File Context</h2>
+        <p className="text-xs text-gray-600 mb-3">
+          Select up to {maxSelection} files to query from
+        </p>
+        
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Search files..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-9 text-sm"
+          />
+        </div>
+
+        {/* Selected count */}
+        {selectedFileIds.length > 0 && (
+          <div className="mt-3 flex items-center justify-between text-sm">
+            <span className="text-blue-600 font-medium">
+              {selectedFileIds.length} selected
+            </span>
+            <button
+              onClick={clearSelection}
+              className="text-red-600 hover:text-red-800 text-xs"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* File List */}
+      <div className="flex-1 overflow-y-auto p-2">
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <div className="text-sm text-gray-500">Loading files...</div>
+          </div>
+        ) : filteredDocuments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-32 text-center px-4">
+            <FileText className="h-12 w-12 text-gray-300 mb-2" />
+            <div className="text-sm text-gray-500">
+              {searchQuery ? 'No files found' : 'No files uploaded yet'}
+            </div>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-xs text-blue-600 mt-2"
+              >
+                Clear search
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {filteredDocuments.map((doc) => {
+              const isSelected = selectedFileIds.includes(doc.id);
+              const docIsPdf = isPdf(doc.name);
+              
+              return (
+                <div
+                  key={doc.id}
+                  onClick={() => toggleFile(doc.id)}
+                  className={`
+                    flex items-start gap-2 p-2 rounded cursor-pointer
+                    transition-colors
+                    ${isSelected 
+                      ? 'bg-blue-100 border border-blue-300' 
+                      : 'bg-white border border-gray-200 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  {/* Checkbox */}
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div
+                      className={`
+                        w-4 h-4 rounded border-2 flex items-center justify-center
+                        ${isSelected 
+                          ? 'bg-blue-600 border-blue-600' 
+                          : 'border-gray-300 bg-white'
+                        }
+                      `}
+                    >
+                      {isSelected && (
+                        <svg
+                          className="w-3 h-3 text-white"
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* File Icon */}
+                  <div className="flex-shrink-0">
+                    {docIsPdf ? (
+                      <File className="h-5 w-5 text-red-600" />
+                    ) : (
+                      <FileText className="h-5 w-5 text-blue-600" />
+                    )}
+                  </div>
+
+                  {/* File Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900 truncate">
+                      {doc.name}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(doc.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Footer tip */}
+      {!loading && documents.length > 0 && (
+        <div className="p-3 border-t bg-white">
+          <p className="text-xs text-gray-500">
+            💡 Select files to narrow your search context
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+

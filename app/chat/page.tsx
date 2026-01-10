@@ -10,12 +10,14 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
-import { Copy, RefreshCw, Edit2, Check } from 'lucide-react';
+import { Copy, RefreshCw, Edit2, Check, X } from 'lucide-react';
+import FileSelector from '@/components/FileSelector';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  selectedFiles?: Array<{id: number; name: string}>;
   searchMetadata?: {
     iterations?: Array<{
       query: string;
@@ -25,6 +27,11 @@ interface Message {
     }>;
     totalQueries?: number;
   };
+}
+
+interface Document {
+  id: number;
+  name: string;
 }
 
 export default function ChatPage() {
@@ -42,6 +49,19 @@ export default function ChatPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+
+  // Load documents for file name lookup
+  useEffect(() => {
+    const loadDocuments = async () => {
+      const { data } = await supabase
+        .from('documents_with_storage_path')
+        .select('id, name');
+      if (data) setDocuments(data);
+    };
+    loadDocuments();
+  }, []);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -122,6 +142,7 @@ export default function ChatPage() {
             message: userMessage.content,
             messages: conversationHistory,
             useAgenticSearch,
+            fileIds: userMessage.selectedFiles?.map(f => f.id) || null,
           }),
         }
       );
@@ -254,6 +275,7 @@ export default function ChatPage() {
             message: editText,
             messages: conversationHistory,
             useAgenticSearch,
+            fileIds: selectedFileIds.length > 0 ? selectedFileIds : null,
           }),
         }
       );
@@ -312,6 +334,14 @@ export default function ChatPage() {
     }
   };
 
+  // Get selected file details
+  const getSelectedFileDetails = () => {
+    return selectedFileIds.map(id => {
+      const doc = documents.find(d => d.id === id);
+      return { id, name: doc?.name || 'Unknown' };
+    });
+  };
+
   // Submit handler
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -322,11 +352,12 @@ export default function ChatPage() {
     setInput('');
     setIsLoading(true);
 
-    // Add user message to the chat
+    // Add user message to the chat with selected files info
     const newUserMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: userMessage,
+      selectedFiles: getSelectedFileDetails(),
     };
     
     setMessages(prev => [...prev, newUserMessage]);
@@ -372,6 +403,7 @@ export default function ChatPage() {
               content: m.content,
             })),
             useAgenticSearch,
+            fileIds: selectedFileIds.length > 0 ? selectedFileIds : null,
           }),
         }
       );
@@ -436,9 +468,11 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="max-w-6xl flex flex-col items-center w-full h-full">
-      {/* Settings Bar */}
-      <div className="w-full flex items-center justify-between px-4 py-2 border-b bg-gray-50">
+    <div className="flex w-full h-full">
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col items-center w-full h-full">
+        {/* Settings Bar */}
+        <div className="w-full flex items-center justify-between px-4 py-2 border-b bg-gray-50">
         <div className="flex items-center gap-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -468,10 +502,31 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div className="flex flex-col w-full gap-6 grow my-2 sm:my-10 p-4 sm:p-8 sm:border rounded-sm overflow-y-auto">
+      <div className="flex flex-col w-full max-w-5xl gap-6 grow my-2 sm:my-10 p-4 sm:p-8 sm:border rounded-sm overflow-y-auto">
         <div className="border-slate-400 rounded-lg flex flex-col justify-start gap-4 pr-2 grow overflow-y-scroll">
-          {messages.map(({ id, role, content, searchMetadata }, index) => (
+          {messages.map(({ id, role, content, searchMetadata, selectedFiles }, index) => (
             <div key={id} className="flex flex-col gap-2">
+              {/* Selected Files Display (only for user messages) */}
+              {role === 'user' && selectedFiles && selectedFiles.length > 0 && (
+                <div className="self-end max-w-3xl">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-1">
+                    <div className="text-xs font-semibold text-blue-900 mb-1">
+                      📁 Context Files ({selectedFiles.length}/10):
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {selectedFiles.map((file) => (
+                        <span
+                          key={file.id}
+                          className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full"
+                        >
+                          {file.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {/* Message bubble */}
               <div className={cn('flex gap-2 items-start', role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
                 <div
@@ -718,5 +773,13 @@ export default function ChatPage() {
         </form>
       </div>
     </div>
+    
+    {/* File Selector Aside */}
+    <FileSelector
+      selectedFileIds={selectedFileIds}
+      onSelectionChange={setSelectedFileIds}
+      maxSelection={10}
+    />
+  </div>
   );
 }

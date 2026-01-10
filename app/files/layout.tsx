@@ -14,9 +14,14 @@ export default async function FilesLayout({ children }: PropsWithChildren) {
           return cookieStore.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Cookie modifications are not allowed in layouts/pages
+            // This is expected and handled by Next.js route handlers
+          }
         },
       },
     }

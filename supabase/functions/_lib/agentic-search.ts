@@ -11,7 +11,7 @@ import {
   shouldContinueIterating,
   type SearchResult,
   type AgenticResult
-} from './query-agent';
+} from './query-agent.ts';
 
 export interface AgenticSearchConfig {
   maxIterations?: number;          // Maximum query attempts (default: 3)
@@ -21,6 +21,7 @@ export interface AgenticSearchConfig {
   enableChaining?: boolean;        // Enable contextual query chaining (default: true)
   maxQueriesPerIteration?: number; // Max queries to try per iteration (default: 3)
   timeoutMs?: number;              // Overall timeout in milliseconds (default: 25000)
+  fileIds?: number[] | null;       // Filter by specific file IDs (default: null)
 }
 
 /**
@@ -40,7 +41,8 @@ export async function performAgenticSearch(
     resultsPerQuery = 4,
     enableChaining = true,
     maxQueriesPerIteration = 3,
-    timeoutMs = 25000
+    timeoutMs = 25000,
+    fileIds = null
   } = config;
 
   const iterations: AgenticResult['iterations'] = [];
@@ -105,6 +107,7 @@ export async function performAgenticSearch(
           .rpc('match_document_sections', {
             embedding,
             match_threshold: matchThreshold,
+            file_ids: fileIds,
           })
           .select('content')
           .limit(resultsPerQuery);
