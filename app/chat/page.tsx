@@ -148,8 +148,27 @@ export default function ChatPage() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch((e: Error) => ({ error: e }));
-        throw new Error(errorData.error || 'Failed to send message');
+        const errorData = await response.json().catch((e: Error) => ({ 
+          error: 'Failed to parse error response',
+          originalError: e.message 
+        }));
+        
+        console.error('Regenerate request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+        
+        let errorMessage = 'Failed to regenerate response';
+        if (response.status === 401 || response.status === 403) {
+          errorMessage = 'Authentication error. Please try logging in again.';
+        } else if (errorData.error) {
+          errorMessage = typeof errorData.error === 'string' 
+            ? errorData.error 
+            : 'An unexpected error occurred';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const searchMetadataHeader = response.headers.get('X-Search-Metadata');
@@ -281,8 +300,27 @@ export default function ChatPage() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch((e: Error) => ({ error: e }));
-        throw new Error(errorData.error || 'Failed to send message');
+        const errorData = await response.json().catch((e: Error) => ({ 
+          error: 'Failed to parse error response',
+          originalError: e.message 
+        }));
+        
+        console.error('Edit message request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+        
+        let errorMessage = 'Failed to send edited message';
+        if (response.status === 401 || response.status === 403) {
+          errorMessage = 'Authentication error. Please try logging in again.';
+        } else if (errorData.error) {
+          errorMessage = typeof errorData.error === 'string' 
+            ? errorData.error 
+            : 'An unexpected error occurred';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const searchMetadataHeader = response.headers.get('X-Search-Metadata');
@@ -409,9 +447,33 @@ export default function ChatPage() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json().catch((e: Error) => ({ error: e }));
-        console.error(errorData);
-        throw new Error(errorData.error || 'Failed to send message');
+        const errorData = await response.json().catch((e: Error) => ({ 
+          error: 'Failed to parse error response',
+          originalError: e.message 
+        }));
+        
+        // Log detailed error information
+        console.error('Chat request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+          errorData,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+        
+        // Create user-friendly error message
+        let errorMessage = 'Failed to send message';
+        if (response.status === 401 || response.status === 403) {
+          errorMessage = 'Authentication error. Please try logging in again.';
+        } else if (response.status === 500) {
+          errorMessage = 'Server error. Please check function logs or try again.';
+        } else if (errorData.error) {
+          errorMessage = typeof errorData.error === 'string' 
+            ? errorData.error 
+            : 'An unexpected error occurred';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       // Read search metadata from headers
