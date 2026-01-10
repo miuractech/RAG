@@ -311,9 +311,9 @@ export default function FilesClient({ initialDocuments }: FilesClientProps) {
                   }
 
                   window.location.href = data.signedUrl;
-                }}
-              >
-                {isPdf ? (
+                  }}
+                >
+                  {isPdf ? (
                   // PDF Icon
                   <svg
                     width="50px"
@@ -340,9 +340,10 @@ export default function FilesClient({ initialDocuments }: FilesClientProps) {
                 )}
 
                 <span className="text-xs break-words">{document.name}</span>
-                <span className="text-xs text-gray-400 uppercase">
-                  {isPdf ? 'PDF' : 'Markdown'}
-                </span>
+                  <span className="text-xs text-gray-400 uppercase">
+                    {isPdf ? 'PDF' : 'Markdown'}
+                  </span>
+                </div>
               </div>
             );
           })}
