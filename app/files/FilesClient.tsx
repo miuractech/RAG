@@ -3,9 +3,10 @@
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/components/ui/use-toast';
+import { Pagination } from '@/components/ui/pagination';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 type Document = {
   id: string;
@@ -23,11 +24,33 @@ export default function FilesClient({ initialDocuments }: FilesClientProps) {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [fileName, setFileName] = useState<string>('');
   const [uploadXhr, setUploadXhr] = useState<XMLHttpRequest | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(12);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
+
+  // Pagination logic
+  const totalPages = Math.ceil(initialDocuments.length / itemsPerPage);
+  const paginatedDocuments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return initialDocuments.slice(startIndex, endIndex);
+  }, [initialDocuments, currentPage, itemsPerPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of the page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
 
   const cancelUpload = () => {
     if (uploadXhr) {
@@ -40,6 +63,32 @@ export default function FilesClient({ initialDocuments }: FilesClientProps) {
     toast({
       description: 'Upload cancelled',
     });
+  };
+
+  const handleDelete = async (documentId: string, documentName: string) => {
+    try {
+      // Delete from database (this will cascade delete embeddings)
+      const { error: dbError } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', documentId);
+
+      if (dbError) throw dbError;
+
+      toast({
+        description: `Successfully deleted ${documentName}`,
+      });
+
+      // Refresh the page to update the list
+      router.refresh();
+      setDeleteConfirmId(null);
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        variant: 'destructive',
+        description: 'Failed to delete file. Please try again.',
+      });
+    }
   };
 
   const handleFileUpload = async (selectedFile: File) => {
@@ -192,15 +241,63 @@ export default function FilesClient({ initialDocuments }: FilesClientProps) {
         )}
       </div>
       {initialDocuments && initialDocuments.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
-          {initialDocuments.map((document) => {
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+            {paginatedDocuments.map((document) => {
             const isPdf = document.name.toLowerCase().endsWith('.pdf');
             
             return (
               <div
                 key={document.id}
-                className="flex flex-col gap-2 justify-center items-center border rounded-md p-4 sm:p-6 text-center overflow-hidden cursor-pointer hover:bg-slate-100"
-                onClick={async () => {
+                className="relative flex flex-col gap-2 justify-center items-center border rounded-md p-4 sm:p-6 text-center overflow-hidden group"
+              >
+                {/* Delete button - shows on hover */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteConfirmId(document.id);
+                  }}
+                  className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                  title="Delete file"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+
+                {/* Confirmation dialog overlay */}
+                {deleteConfirmId === document.id && (
+                  <div className="absolute inset-0 bg-white bg-opacity-95 flex flex-col items-center justify-center gap-3 p-3 z-10">
+                    <p className="text-sm font-semibold text-gray-900">Delete this file?</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDelete(document.id, document.name)}
+                        className="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirmId(null)}
+                        className="px-3 py-1.5 bg-gray-300 text-gray-700 text-sm rounded hover:bg-gray-400"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div
+                  className="cursor-pointer w-full h-full flex flex-col gap-2 items-center justify-center"
+                  onClick={async () => {
                   const { data, error } = await supabase.storage
                     .from('files')
                     .createSignedUrl(document.storage_object_path, 60);
@@ -249,7 +346,21 @@ export default function FilesClient({ initialDocuments }: FilesClientProps) {
               </div>
             );
           })}
-        </div>
+          </div>
+          
+          {/* Pagination controls */}
+          <div className="mt-8">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              itemsPerPage={itemsPerPage}
+              totalItems={initialDocuments.length}
+              onItemsPerPageChange={handleItemsPerPageChange}
+              pageSizeOptions={[12, 24, 48, 96]}
+            />
+          </div>
+        </>
       )}
     </div>
   );

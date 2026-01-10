@@ -1,10 +1,11 @@
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
-import { X, Search, FileText, File } from 'lucide-react';
+import { X, Search, FileText, File, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Document {
   id: number;
@@ -27,6 +28,8 @@ export default function FileSelector({
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -81,6 +84,25 @@ export default function FileSelector({
   const filteredDocuments = documents.filter(doc =>
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredDocuments.length / itemsPerPage);
+  const paginatedDocuments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredDocuments.slice(startIndex, endIndex);
+  }, [filteredDocuments, currentPage, itemsPerPage]);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   const isPdf = (filename: string) => filename.toLowerCase().endsWith('.pdf');
 
@@ -144,7 +166,7 @@ export default function FileSelector({
           </div>
         ) : (
           <div className="space-y-1">
-            {filteredDocuments.map((doc) => {
+            {paginatedDocuments.map((doc) => {
               const isSelected = selectedFileIds.includes(doc.id);
               const docIsPdf = isPdf(doc.name);
               
@@ -213,12 +235,64 @@ export default function FileSelector({
         )}
       </div>
 
-      {/* Footer tip */}
+      {/* Footer with pagination and tip */}
       {!loading && documents.length > 0 && (
-        <div className="p-3 border-t bg-white">
-          <p className="text-xs text-gray-500">
-            💡 Select files to narrow your search context
-          </p>
+        <div className="border-t bg-white">
+          {/* Pagination controls */}
+          {totalPages > 1 && (
+            <div className="px-3 py-2 border-b flex items-center justify-between">
+              <div className="text-xs text-gray-600">
+                Page {currentPage} of {totalPages}
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="h-7 w-7 p-0"
+                  title="Previous page"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="h-7 w-7 p-0"
+                  title="Next page"
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {/* Items per page selector */}
+          <div className="px-3 py-2 border-b flex items-center justify-between text-xs">
+            <span className="text-gray-600">Items per page:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+
+          {/* Tip */}
+          <div className="p-3">
+            <p className="text-xs text-gray-500">
+              💡 Select files to narrow your search context
+            </p>
+          </div>
         </div>
       )}
     </div>
